@@ -1,114 +1,126 @@
 from threading import Thread
 from time import sleep
 import pygame
-import pyautogui
+import sys
 import mouse
 import keyboard
-from button import Button
-from worker import Worker
+import PySimpleGUI as sg
+import math
 
+# 할꺼 
+# 알트탭(구현), 방향키(구현), 컨트롤탭(구현), 움직임(어느정도 됨), 가상키보드 구현하면 끝 
+
+# Constants
+BUTTON_START = 7
+BUTTON_SELECT = 6
+BUTTON_R_BUMPER = 5
+BUTTON_L_BUMPER = 4
+BUTTON_A = 0
+BUTTON_B = 1
+BUTTON_X = 2
+BUTTON_Y = 3
+BUTTON_R_STICK = 9
+BUTTON_L_STICK = 8
 SCREEN_HEIGHT = 300
-SCREEN_WIDTH = 400
-DEADZONE = 0.25
-velocity = 4
+SCREEN_WIDTH = 200
+DEADZONE = 0.02
+
+scale = 2
+motion=[0,0]
 
 
-def show_text( msg, color, x=50, y=50 ):
-    text = font.render( msg, True, color)
-    screen.blit(text, ( x, y ))
-
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption('Mouse Controller')
-
-up_image = pygame.image.load('img/up.png').convert_alpha()
-down_image = pygame.image.load('img/down.png').convert_alpha()
-
-up_button = Button(100, 200, up_image, 0.2)
-down_button = Button(200, 200, down_image, 0.2)
-
+# initialize pygame
 pygame.init()
-font = pygame.font.SysFont('Comic Sans MS', 30)
 
-text_surface = font.render('Some Text', False, (0, 0, 0))
-screen.blit(text_surface, (50,50))
+# get joystick(controller)
+joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+controller = joysticks[0].get_name()
+
+# GUI
+sg.theme('DarkBlue')
+layout = [[sg.Text('Controller: ' + controller, key='CONTROLLER')],
+          [sg.Text('Pointer Speed: ' + str(scale), key='SCALE')], 
+          [sg.Button('↑', key='UP', button_color=('black', 'white'), size=(3, 2)),
+           sg.Button('↓', key='DOWN', button_color=('black', 'white'), size=(3, 2))],
+           [sg.Button('on-screen keyboard', key='keyboard')],
+          ]
+window = sg.Window('Controller_Mouse', layout, size=(SCREEN_HEIGHT, SCREEN_WIDTH))
 
 
-worker = Worker()
-worker.start()
-
-
-print('Controller :')
-joysticks = []
-joysticks.append(pygame.joystick.Joystick(0))
 
 running = True
 while running:
 
-    screen.blit(text_surface, (50,50))
-    screen.fill((255,255,255))
+    event, values = window.read(timeout=0) 
+    if event == 'close' or event == sg.WIN_CLOSED:
+        running = False
+    elif event == 'UP'and scale < 4:
+        scale += 0.5
+    elif event == 'DOWN' and scale > 1.5:
+        scale -= 0.5
+    window['SCALE'].update('Speed(1.5 ~ 4): {}'.format(scale))
     
-    # velocity
-    if up_button.draw(screen): 
-        velocity += .5
-        velocity = round(velocity, 1)
-        
-        
-    elif down_button.draw(screen): 
-        velocity -= .5
-        velocity = round(velocity, 1)
-        
 
+    if abs(motion[0]) < DEADZONE:
+        motion[0] = 0
+    if abs(motion[1]) < DEADZONE:
+        motion[1] = 0
+    mouse.move(motion[0] , motion[1], absolute=False)
+
+
+    
     for event in pygame.event.get():
-        if event.type == pygame.JOYBUTTONDOWN:
-            print(event.button)
-            if event.button in (0, 7, 8, 9, 10):
-                print(event.button)
-                print("click")
+        print(event)
+        if event.type == pygame.JOYBUTTONDOWN: 
+            if event.button == BUTTON_START:
+                window.bring_to_front()
+            if event.button == BUTTON_L_BUMPER:
+                if keyboard.is_pressed(['alt' , 'tab']):
+                    keyboard.release(['alt' , 'tab'])
+                else:
+                    keyboard.press(['alt' , 'tab'])
+            if event.button == BUTTON_R_BUMPER:
+                keyboard.press_and_release(['ctrl' , 'tab'])
+            if event.button == BUTTON_X:
                 mouse.click()
-            elif event.button == 11:
-                print(event.button)
-                keyboard.press_and_release('up')
-            elif event.button == 12:
-                print(event.button)
-                keyboard.press_and_release('down')
-            elif event.button == 13:
-                print(event.button)
-                keyboard.press_and_release('left')
-            elif event.button == 14:
-                print(event.button)
-                keyboard.press_and_release('right')
-            else:
-                print(event.button)
-                print("other")
-        elif event.type == pygame.QUIT:
-            running=False
+            if event.button == BUTTON_A:
+                mouse.right_click()  
+            if event.button == BUTTON_R_STICK:
+                if mouse.is_pressed():
+                    mouse.release()
+                else:
+                    mouse.press() 
 
         elif event.type == pygame.JOYAXISMOTION:
-            axis, value = event.axis, event.value
-            print(axis)
-            # print('    ' * (axis + 1), value)
-            value = value ** 3 * abs(value) ** 1
-            value *= velocity
-            if axis in (0, 2):
-                if abs(value) < DEADZONE:
-                    worker.dx = 0
-                else:
-                    worker.dx = value
-            if axis in (1, 3):
-                if abs(value) < DEADZONE:
-                    worker.dy = 0
-                else:
-                    worker.dy = value
+            if event.axis < 2:            
+                x_axis, y_axis = joysticks[0].get_axis(0), joysticks[0].get_axis(1)
+            elif event.axis < 4:
+                x_axis, y_axis = joysticks[0].get_axis(2), joysticks[0].get_axis(3)
 
-        # print(worker.dx, '\t', worker.dy)
-    
-    show_text("Velocity: " + str(velocity), (0,0,0))
-    pygame.display.update()
+            # angle and magnitude of joystick movement
+            angle = math.atan2(y_axis, x_axis)
+            magnitude = math.sqrt(x_axis**2 + y_axis**2)
 
-worker.go_on = False
-worker.join()
+            # velocity in the x and y directions
+            velocity_x = magnitude * math.cos(angle)
+            velocity_y = magnitude * math.sin(angle)
+
+            motion[0] = velocity_x * scale ** 2
+            motion[1] = velocity_y * scale ** 2
+
+        elif event.type == pygame.JOYHATMOTION:
+            if event.value == (-1, 0): 
+                keyboard.press_and_release("left")
+            if event.value == (0, -1): 
+                keyboard.press_and_release("down")
+            if event.value == (1, 0): 
+                keyboard.press_and_release("right")
+            if event.value == (0, 1): 
+                keyboard.press_and_release("up")
+
 pygame.quit()
 print('bye')
+sys.exit()
 
 
 
