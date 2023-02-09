@@ -1,6 +1,6 @@
 # About
 
-Python Script that converts controller inputs to mouse/keyboard inputs.
+Python project. converts controller inputs to mouse/keyboard inputs. (Windows Only)
 
 
 ## Features
