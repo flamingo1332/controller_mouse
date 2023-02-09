@@ -59,7 +59,7 @@ class GUI(Thread):
     def write(self, event):
         windows = Desktop(backend="uia").windows()
         for window in windows:
-            if window.window_text() != 'Controller_Mouse' and window.window_text() != '작업 표시줄':
+            if window.window_text() != 'Controller_Mouse' and window.window_text() != 'Program Manager' and window.window_text() != 'Taskbar':
                 window.set_focus()
                 keyboard.write(event)
                 break
@@ -67,7 +67,7 @@ class GUI(Thread):
     def press(self, event):
         windows = Desktop(backend="uia").windows()
         for window in windows:
-            if window.window_text() != 'Controller_Mouse' and window.window_text() != '작업 표시줄':
+            if window.window_text() != 'Controller_Mouse' and window.window_text() != 'Program Manager' and window.window_text() != 'Taskbar':
                 window.set_focus()
                 keyboard.press_and_release(event)
                 break
